@@ -1,15 +1,17 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class Spawner : MonoBehaviour
 {
     [SerializeField] private Cube _prefab;
-    private Fuse _explosion;
+    [SerializeField] private GameObject _explosionEffectPrefab;
+    private Exploder _explosion;
     public event Action<Cube> Change;
 
     private void Awake()
     {
-        _explosion = GetComponent<Fuse>();
+        _explosion = GetComponent<Exploder>();
     }
 
     private void OnEnable()
@@ -30,15 +32,18 @@ public class Spawner : MonoBehaviour
         }
 
         Vector3 position = destroyedCube.transform.position;
-        Vector3 scale = destroyedCube.transform.localScale; 
+        Vector3 scale = destroyedCube.transform.localScale;
         destroyedCube.Destroyed -= HandleCubeDestruction;
 
-        TrySpawnNewCubes(position, scale , destroyedCube);
+        TrySpawnNewCubes(position, scale, destroyedCube);
     }
 
-    private void TrySpawnNewCubes(Vector3 position, Vector3 scale , Cube destroyedCube)
+    private void TrySpawnNewCubes(Vector3 position, Vector3 scale, Cube destroyedCube)
     {
-        float randomValue = UnityEngine.Random.Range(0f, 101f);
+        float minValue = 0f;
+        float maxValue = 101f;
+
+        float randomValue = UnityEngine.Random.Range(minValue, maxValue);
 
         if (randomValue < destroyedCube.CurrentChance)
         {
@@ -47,21 +52,30 @@ public class Spawner : MonoBehaviour
         }
         else
         {
-            _explosion?.Explode(position);
+            List<Cube> cubes = SpawnCubes(position, scale, destroyedCube);
+            Instantiate(_explosionEffectPrefab, position, Quaternion.identity);
+            _explosion?.Explode(position, destroyedCube, cubes);
         }
     }
 
-    private void SpawnCubes(Vector3 position, Vector3 scale, Cube destroyedCube)
+    private List<Cube> SpawnCubes(Vector3 position, Vector3 scale, Cube destroyedCube)
     {
-        int randomCount = UnityEngine.Random.Range(2, 6);
+        int minValue = 2;
+        int maxValue = 6;
+
+        int randomCount = UnityEngine.Random.Range(minValue, maxValue);
+        List<Cube> newCubes = new List<Cube>();
 
         for (int i = 0; i < randomCount; i++)
         {
-            InstantiateCube(position, scale, destroyedCube);
+            Cube cube = InstantiateCube(position, scale, destroyedCube);
+            newCubes.Add(cube);
         }
+
+        return newCubes;
     }
 
-    private void InstantiateCube(Vector3 position, Vector3 scale , Cube destroyedCube)
+    private Cube InstantiateCube(Vector3 position, Vector3 scale, Cube destroyedCube)
     {
         Cube cube = Instantiate(destroyedCube, position + Vector3.up, Quaternion.identity);
         cube.transform.localScale = scale / 2;
@@ -69,5 +83,7 @@ public class Spawner : MonoBehaviour
         cube.InheritChance(destroyedCube);
         cube.Destroyed += HandleCubeDestruction;
         Change?.Invoke(cube);
+
+        return cube;
     }
 }

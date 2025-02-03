@@ -11,17 +11,17 @@ public class ColorChanger : MonoBehaviour
 
     private void OnEnable()
     {
-        _spawner.Change += ChangeColors;
+        _spawner.Change += ChangeColor;
     }
 
     private void OnDisable()
     {
-        _spawner.Change -= ChangeColors;
+        _spawner.Change -= ChangeColor;
     }
 
-    public void ChangeColors(Cube cube)
+    public void ChangeColor(Cube cube)
     {
-        MeshRenderer renderer = cube.GetComponent<MeshRenderer>();
+        MeshRenderer renderer = cube._renderer;
 
         if (renderer != null)
         {
