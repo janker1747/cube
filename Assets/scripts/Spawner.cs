@@ -1,32 +1,28 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 public class Spawner : MonoBehaviour
 {
     [SerializeField] private Cube _prefab;
-    private static float _currentChance = 100f;
-    private Explosion _explosion;
+    private Fuse _explosion;
     public event Action<Cube> Change;
-
 
     private void Awake()
     {
-        _explosion = GetComponent<Explosion>();
+        _explosion = GetComponent<Fuse>();
     }
 
     private void OnEnable()
     {
-        _prefab.Destroyed += OnCubeDestroyed;
+        _prefab.Destroyed += HandleCubeDestruction;
     }
 
     private void OnDisable()
     {
-        _prefab.Destroyed -= OnCubeDestroyed;
+        _prefab.Destroyed -= HandleCubeDestruction;
     }
 
-    private void OnCubeDestroyed(Cube destroyedCube)
+    private void HandleCubeDestruction(Cube destroyedCube)
     {
         if (destroyedCube == null)
         {
@@ -34,21 +30,20 @@ public class Spawner : MonoBehaviour
         }
 
         Vector3 position = destroyedCube.transform.position;
-        destroyedCube.Destroyed -= OnCubeDestroyed;
-        SpawnChance(position);
+        Vector3 scale = destroyedCube.transform.localScale; 
+        destroyedCube.Destroyed -= HandleCubeDestruction;
+
+        TrySpawnNewCubes(position, scale , destroyedCube);
     }
 
-    private void SpawnChance(Vector3 position)
+    private void TrySpawnNewCubes(Vector3 position, Vector3 scale , Cube destroyedCube)
     {
-        float minValue = 0;
-        float maxValue = 101;
-        float randomValue = UnityEngine.Random.Range(minValue, maxValue);
+        float randomValue = UnityEngine.Random.Range(0f, 101f);
 
-        if (randomValue < _currentChance)
+        if (randomValue < destroyedCube.CurrentChance)
         {
-            Debug.Log("Разделение произошло! Шанс не сработать: " + randomValue);
-            SpawnObject(position);
-            _currentChance /= 2;
+            SpawnCubes(position, scale, destroyedCube);
+            destroyedCube.ReduceChance();
         }
         else
         {
@@ -56,38 +51,23 @@ public class Spawner : MonoBehaviour
         }
     }
 
-    private void SpawnObject(Vector3 position)
+    private void SpawnCubes(Vector3 position, Vector3 scale, Cube destroyedCube)
     {
-        float minValue = 2f;
-        float maxValue = 6f;
-        int random = UnityEngine.Random.Range((int)minValue, (int)maxValue);
+        int randomCount = UnityEngine.Random.Range(2, 6);
 
-        for (int i = 0; i < random; i++)
+        for (int i = 0; i < randomCount; i++)
         {
-            CreateObject(position);
+            InstantiateCube(position, scale, destroyedCube);
         }
     }
 
-    private void CreateObject(Vector3 position)
+    private void InstantiateCube(Vector3 position, Vector3 scale , Cube destroyedCube)
     {
-        Cube cube = Instantiate(_prefab, position + Vector3.up, Quaternion.identity);
-        cube.transform.localScale = _prefab.transform.localScale / 2;
+        Cube cube = Instantiate(destroyedCube, position + Vector3.up, Quaternion.identity);
+        cube.transform.localScale = scale / 2;
 
-        Rigidbody rigidbody = cube.gameObject.AddComponent<Rigidbody>();
-
-        if (rigidbody != null)
-        {
-            rigidbody.useGravity = true;
-        }
-
-        if (rigidbody != null)
-        {
-            Collider collider = rigidbody.gameObject.AddComponent<BoxCollider>();
-        }
-
-        cube.Destroyed += OnCubeDestroyed;
+        cube.InheritChance(destroyedCube);
+        cube.Destroyed += HandleCubeDestruction;
         Change?.Invoke(cube);
     }
-
-
 }
